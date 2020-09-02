@@ -12,48 +12,62 @@ import UIKit
 import CoreLocation
 import MapKit
 
+typealias CompletionHandler = (() -> Void)
+
 class ViewController: UIViewController {
     let spanDelta = 0.01
     let locationManager = CLLocationManager()
     var previousLocation : CLLocation?
+    var destinationLocation : CLLocation?
     
     @IBOutlet weak var map: MKMapView!
+    @IBOutlet weak var destinationLabel: UILabel!
+    @IBOutlet weak var locationSearchBar: UISearchBar!
+
     
     override func viewDidLoad() {
         super.viewDidLoad()
         self.map.delegate = self
+        self.locationSearchBar.delegate = self
+        
         self.checkLocationServices()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.destinationLabel.text = ""
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-
-
+        
+        
     }
     
     private func checkLocationServices() {
         if CLLocationManager.locationServicesEnabled() {
             self.setupLocationManager()
-            self.checkLocationAuth()
+            self.handleAuthorizationStatus(locationManager: self.locationManager, status: CLLocationManager.authorizationStatus())
         } else {
-            //TODO:- present alert that tell them how to turn on location services
+            self.dispalySingleActionAlert(title: "Location Services", message: "you need to turn on location services in your device settings")
         }
     }
     
     private func setupLocationManager() {
         self.locationManager.delegate = self
-        self.locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        self.locationManager.desiredAccuracy = kCLLocationAccuracyBest
     }
     
-    private func checkLocationAuth() {
-        switch CLLocationManager.authorizationStatus() {
+    private func handleAuthorizationStatus(locationManager : CLLocationManager, status: CLAuthorizationStatus) {
+        switch status {
             
         case .authorizedWhenInUse:
+            self.locationManager.startUpdatingLocation()
             self.startTracking()
             break
             
         case .denied:
-            //TODO:- present alert that tell them how to turn on location services
+            self.dispalySingleActionAlert(title: "Location Services", message: "you have denied location services so you need to turn them on in your device settings")
             break
             
         case .notDetermined:
@@ -62,18 +76,17 @@ class ViewController: UIViewController {
             
         case .restricted:
             //something like parental restriction
-            //TOD:- present alert that tell them that they are restricted for some reason
+            self.dispalySingleActionAlert(title: "Location Services", message: "your location srvices is restricted")
             break
-
+            
         case .authorizedAlways:
             break
-    
+            
         }
     }
     
     private func startTracking() {
         self.map.showsUserLocation = true
-        self.locationManager.startUpdatingLocation()
         self.previousLocation = self.locationManager.location
     }
     
@@ -95,8 +108,11 @@ class ViewController: UIViewController {
         self.map.addAnnotation(pin)
     }
     
-    private func checkArrival(_ location: CLLocation) {
-        
+    private func checkArrival(_ location: CLLocation) -> Bool {
+        guard let destinationLocation = self.destinationLocation else {
+            return false
+        }
+        return destinationLocation.distance(from: location) <= 5
     }
     
     private func getAdressFrom(_ location: CLLocation) {
@@ -118,51 +134,71 @@ class ViewController: UIViewController {
         }
         
     }
+    
+    private func arrivedToDestination() {
+        self.locationManager.stopUpdatingLocation()
+        self.dispalySingleActionAlert(title: "Location Services", message: "you have arrived to you destination")
+    }
+    
+    
+    func dispalySingleActionAlert(title: String, message: String, success: CompletionHandler? = nil) {
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            let okAction = UIAlertAction(title: "OK", style: .cancel, handler: { (action) in
+                success?()
+            })
+            alert.addAction(okAction)
+            self.present(alert, animated: true)
+        }
+    }
+    
+   
 }
 
 extension ViewController : CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-            if location.horizontalAccuracy > 0 {
-                self.locationManager.stopUpdatingLocation()
-                self.render(CLLocation(latitude: location.coordinate.latitude , longitude: location.coordinate.longitude))
-                self.checkArrival(location)
-                
-                guard let previousLocation = self.previousLocation else {
-                    return
-                }
-                
-//                if previousLocation.distance(from: location) > 50 {
-                    print("we moved 50 meters from previous location")
-                    self.getAdressFrom(location)
-//                }
-                
-            }
+        
+        self.locationManager.stopUpdatingLocation()
+        self.render(CLLocation(latitude: location.coordinate.latitude , longitude: location.coordinate.longitude))
+        
+        if self.checkArrival(location) {
+            self.arrivedToDestination()
         }
+        
+    }
     
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
-        self.checkLocationAuth()
+        self.handleAuthorizationStatus(locationManager: manager, status: status)
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location update failed, \(error)")
+        self.dispalySingleActionAlert(title: "Location Services", message: "Location update failed, \(error)")
     }
-
+    
+    
+    
 }
 
 extension ViewController : MKMapViewDelegate {
-//    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-//
-//        for touch in touches {
-//
-//            if let x = touch.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer }) {
-//                print("asdasdasd")
-//            }
-//               let touchPoint = touch.location(in: map)
-//               let location = map.convert(touchPoint, toCoordinateFrom: map)
-//            addPin(in: location)
-//               print ("\(location.latitude), \(location.longitude)")
-//           }
-//    }
+    //    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+    //
+    //        for touch in touches {
+    //
+    //            if let x = touch.gestureRecognizers?.first(where: { $0 is UITapGestureRecognizer }) {
+    //                print("asdasdasd")
+    //            }
+    //               let touchPoint = touch.location(in: map)
+    //               let location = map.convert(touchPoint, toCoordinateFrom: map)
+    //            addPin(in: location)
+    //               print ("\(location.latitude), \(location.longitude)")
+    //           }
+    //    }
+}
+
+extension ViewController : UISearchBarDelegate {
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        print(searchText)
+    }
 }

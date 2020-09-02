@@ -16,26 +16,37 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <mapView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" mapType="standard" translatesAutoresizingMaskIntoConstraints="NO" id="wqX-IP-Ta5">
-                                <rect key="frame" x="0.0" y="100" width="414" height="762"/>
+                                <rect key="frame" x="0.0" y="100" width="414" height="734.5"/>
                             </mapView>
                             <searchBar contentMode="redraw" translatesAutoresizingMaskIntoConstraints="NO" id="nWD-RA-hUL">
                                 <rect key="frame" x="0.0" y="44" width="414" height="56"/>
                                 <textInputTraits key="textInputTraits"/>
                             </searchBar>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="destination label" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="0" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="fHH-34-nHP">
+                                <rect key="frame" x="0.0" y="834.5" width="414" height="27.5"/>
+                                <fontDescription key="fontDescription" name="Futura-Bold" family="Futura" pointSize="21"/>
+                                <nil key="textColor"/>
+                                <nil key="highlightedColor"/>
+                            </label>
                         </subviews>
                         <color key="backgroundColor" systemColor="systemBackgroundColor" cocoaTouchSystemColor="whiteColor"/>
                         <constraints>
                             <constraint firstItem="wqX-IP-Ta5" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="1Ev-nr-bdt"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="fHH-34-nHP" secondAttribute="trailing" id="6Xn-AZ-iBl"/>
+                            <constraint firstItem="fHH-34-nHP" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="8Qo-ao-Flp"/>
                             <constraint firstItem="nWD-RA-hUL" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" id="M8c-2S-aSK"/>
                             <constraint firstItem="nWD-RA-hUL" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" id="MIj-HP-Cwi"/>
                             <constraint firstItem="nWD-RA-hUL" firstAttribute="trailing" secondItem="6Tk-OE-BBY" secondAttribute="trailing" id="QBp-81-J1F"/>
                             <constraint firstItem="wqX-IP-Ta5" firstAttribute="top" secondItem="nWD-RA-hUL" secondAttribute="bottom" id="VXb-vf-I40"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="wqX-IP-Ta5" secondAttribute="bottom" id="Wuq-uu-Dai"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="fHH-34-nHP" secondAttribute="bottom" id="b25-vx-iVg"/>
+                            <constraint firstItem="fHH-34-nHP" firstAttribute="top" secondItem="wqX-IP-Ta5" secondAttribute="bottom" id="eIj-ma-fsF"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="wqX-IP-Ta5" secondAttribute="trailing" id="kYm-CM-YLG"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                     </view>
                     <connections>
+                        <outlet property="destinationLabel" destination="fHH-34-nHP" id="JRG-w2-Wlw"/>
+                        <outlet property="locationSearchBar" destination="nWD-RA-hUL" id="Iga-Sg-Ilj"/>
                         <outlet property="map" destination="wqX-IP-Ta5" id="dNO-h4-d9D"/>
                     </connections>
                 </viewController>
