@@ -1,5 +1,5 @@
 //
-//  ViewController.swift
+//  MainMapViewController.swift
 //  FindMyLocation
 //
 //  Created by yading on 02/09/2020.
@@ -14,35 +14,60 @@ import MapKit
 
 typealias CompletionHandler = (() -> Void)
 
-class ViewController: UIViewController {
-    let spanDelta = 0.01
-    let locationManager = CLLocationManager()
-    var previousLocation : CLLocation?
-    var destinationLocation : CLLocation?
-    
-    @IBOutlet weak var map: MKMapView!
-    @IBOutlet weak var destinationLabel: UILabel!
-    @IBOutlet weak var locationSearchBar: UISearchBar!
+extension MainMapViewController : LocationSearchTableDelegate {
+    func selected(item: MKPlacemark) {
+        self.selectedPlaceMark = item
+        guard let location = self.selectedPlaceMark?.location else {
+            return
+        }
+        self.render(location)
+        self.map.removeAnnotations(map.annotations)
+        self.addPin(in: location.coordinate)
+    }
+}
 
+extension MainMapViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         self.map.delegate = self
-        self.locationSearchBar.delegate = self
+
+        let locationSearchTable = LocationSearchTableViewController()
+        locationSearchTable.delegate = self
+        self.resultSearchController = UISearchController(searchResultsController: locationSearchTable)
+        self.resultSearchController?.searchResultsUpdater = locationSearchTable
+        locationSearchTable.mapView = self.map
+        
+        let searchBar = self.resultSearchController!.searchBar
+        searchBar.sizeToFit()
+        searchBar.placeholder = "Search for places"
+        self.navigationItem.titleView = self.resultSearchController?.searchBar
+        
+        self.resultSearchController?.hidesNavigationBarDuringPresentation = false
+        definesPresentationContext = true
         
         self.checkLocationServices()
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
+        
         self.destinationLabel.text = ""
     }
     
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        
-    }
+}
+
+class MainMapViewController: UIViewController {
+    
+    private var selectedPlaceMark: MKPlacemark?
+    private let spanDelta = 0.01
+    private let minimumDisatnce : CLLocationDistance = 5
+    private var previousLocation : CLLocation?
+    private var destinationLocation : CLLocation?
+    
+    private let locationManager = CLLocationManager()
+    private var resultSearchController: UISearchController?
+    
+    @IBOutlet weak var map: MKMapView!
+    @IBOutlet weak var destinationLabel: UILabel!
+
     
     private func checkLocationServices() {
         if CLLocationManager.locationServicesEnabled() {
@@ -109,10 +134,10 @@ class ViewController: UIViewController {
     }
     
     private func checkArrival(_ location: CLLocation) -> Bool {
-        guard let destinationLocation = self.destinationLocation else {
+        guard let destination = self.selectedPlaceMark?.location else {
             return false
         }
-        return destinationLocation.distance(from: location) <= 5
+        return destination.distance(from: location) <= 5
     }
     
     private func getAdressFrom(_ location: CLLocation) {
@@ -120,7 +145,7 @@ class ViewController: UIViewController {
         
         geoCoder.reverseGeocodeLocation(location) {
             [weak self] (placemarks, error) in
-            guard let self = self else {
+            guard let _ = self else {
                 assertionFailure()
                 return
             }
@@ -141,7 +166,7 @@ class ViewController: UIViewController {
     }
     
     
-    func dispalySingleActionAlert(title: String, message: String, success: CompletionHandler? = nil) {
+    private func dispalySingleActionAlert(title: String, message: String, success: CompletionHandler? = nil) {
         DispatchQueue.main.async {
             let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
             let okAction = UIAlertAction(title: "OK", style: .cancel, handler: { (action) in
@@ -152,10 +177,33 @@ class ViewController: UIViewController {
         }
     }
     
+    private func searchAdress(from text: String) {
+        let geoCoder = CLGeocoder()
+        geoCoder.geocodeAddressString(text) { [weak self] (placemarks, error) in
+            guard let self = self else { return }
+            if let error = error {
+                self.dispalySingleActionAlert(title: "address search", message: error.localizedDescription)
+                return
+            } else {
+                if let placemarks = placemarks, let placemark = placemarks.first, let location = placemark.location {
+                    self.addPin(in: location.coordinate)
+                    self.render(location)
+                }
+            }
+        }
+    }
+    
+    private func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder()
+        guard let searchText = searchBar.text else {
+            return
+        }
+        self.searchAdress(from: searchText)
+    }
    
 }
 
-extension ViewController : CLLocationManagerDelegate {
+extension MainMapViewController : CLLocationManagerDelegate {
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
@@ -174,14 +222,12 @@ extension ViewController : CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        self.dispalySingleActionAlert(title: "Location Services", message: "Location update failed, \(error)")
+        self.dispalySingleActionAlert(title: "Location Services", message: "Location update failed, \(error.localizedDescription)")
     }
-    
-    
     
 }
 
-extension ViewController : MKMapViewDelegate {
+extension MainMapViewController : MKMapViewDelegate {
     //    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
     //
     //        for touch in touches {
@@ -195,10 +241,4 @@ extension ViewController : MKMapViewDelegate {
     //               print ("\(location.latitude), \(location.longitude)")
     //           }
     //    }
-}
-
-extension ViewController : UISearchBarDelegate {
-    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        print(searchText)
-    }
 }
