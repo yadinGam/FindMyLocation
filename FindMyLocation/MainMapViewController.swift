@@ -14,51 +14,12 @@ import MapKit
 
 typealias CompletionHandler = (() -> Void)
 
-extension MainMapViewController : LocationSearchTableDelegate {
-    func selected(item: MKPlacemark) {
-        self.selectedPlaceMark = item
-        guard let location = self.selectedPlaceMark?.location else {
-            return
-        }
-        self.render(location)
-        self.map.removeAnnotations(map.annotations)
-        self.addPin(in: location.coordinate)
-    }
-}
-
-extension MainMapViewController {
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        
-        self.map.delegate = self
-
-        let locationSearchTable = LocationSearchTableViewController()
-        locationSearchTable.delegate = self
-        self.resultSearchController = UISearchController(searchResultsController: locationSearchTable)
-        self.resultSearchController?.searchResultsUpdater = locationSearchTable
-        locationSearchTable.mapView = self.map
-        
-        let searchBar = self.resultSearchController!.searchBar
-        searchBar.sizeToFit()
-        searchBar.placeholder = "Search for places"
-        self.navigationItem.titleView = self.resultSearchController?.searchBar
-        
-        self.resultSearchController?.hidesNavigationBarDuringPresentation = false
-        definesPresentationContext = true
-        
-        self.checkLocationServices()
-        
-        self.destinationLabel.text = ""
-    }
-    
-}
-
 class MainMapViewController: UIViewController {
     
-    private var selectedPlaceMark: MKPlacemark?
     private let spanDelta = 0.01
     private let minimumDisatnce : CLLocationDistance = 5
+    
+    private var selectedPlaceMark: MKPlacemark?
     private var previousLocation : CLLocation?
     private var destinationLocation : CLLocation?
     
@@ -67,7 +28,48 @@ class MainMapViewController: UIViewController {
     
     @IBOutlet weak var map: MKMapView!
     @IBOutlet weak var destinationLabel: UILabel!
-
+    
+    private var directionsArray : [MKDirections] = []
+    
+    private func getDirections() {
+        guard let location = self.selectedPlaceMark?.location, let currentCoordinates = self.locationManager.location?.coordinate else {
+            return
+        }
+        
+        let request = createDirectionsRequest(from: currentCoordinates, to: location)
+        let directions = MKDirections(request: request)
+        self.resetMap(withNew: directions)
+        
+        
+        directions.calculate {[weak self] (response, error) in
+            guard let self = self else { return }
+            guard let response = response else { return }
+            for rout in response.routes {
+                self.map.addOverlay(rout.polyline)
+                self.map.setVisibleMapRect(rout.polyline.boundingMapRect, animated: true)
+            }
+        }
+    }
+    
+    private func resetMap(withNew directions: MKDirections) {
+        map.removeOverlays(map.overlays)
+        self.directionsArray.append(directions)
+        let _ = self.directionsArray.map { $0.cancel() }
+    }
+    
+   private func createDirectionsRequest(from coordinate: CLLocationCoordinate2D, to location: CLLocation) -> MKDirections.Request {
+        let startingLocation = MKPlacemark(coordinate: coordinate)
+        let destinationCoordinate = location.coordinate
+        let destination = MKPlacemark(coordinate: destinationCoordinate)
+        
+        let request = MKDirections.Request()
+        request.source = MKMapItem(placemark: startingLocation)
+        request.destination = MKMapItem(placemark: destination)
+        request.transportType = .automobile
+        request.requestsAlternateRoutes = true
+        
+        return request
+    }
     
     private func checkLocationServices() {
         if CLLocationManager.locationServicesEnabled() {
@@ -127,9 +129,15 @@ class MainMapViewController: UIViewController {
         return region
     }
     
-    private func addPin(in coordinate: CLLocationCoordinate2D) {
+    private func addPin(in placemark: MKPlacemark) {
+        self.map.removeAnnotations(map.annotations)
         let pin = MKPointAnnotation()
-        pin.coordinate = coordinate
+        pin.coordinate = placemark.coordinate
+        pin.title = placemark.name
+        if let city = placemark.locality,
+            let state = placemark.administrativeArea {
+            pin.subtitle = "\(city) \(state)"
+        }
         self.map.addAnnotation(pin)
     }
     
@@ -186,7 +194,7 @@ class MainMapViewController: UIViewController {
                 return
             } else {
                 if let placemarks = placemarks, let placemark = placemarks.first, let location = placemark.location {
-                    self.addPin(in: location.coordinate)
+                    self.addPin(in: MKPlacemark(placemark: placemark))
                     self.render(location)
                 }
             }
@@ -200,7 +208,7 @@ class MainMapViewController: UIViewController {
         }
         self.searchAdress(from: searchText)
     }
-   
+    
 }
 
 extension MainMapViewController : CLLocationManagerDelegate {
@@ -227,7 +235,59 @@ extension MainMapViewController : CLLocationManagerDelegate {
     
 }
 
+extension MainMapViewController : LocationSearchTableDelegate {
+    
+    func selected(item: MKPlacemark) {
+        self.selectedPlaceMark = item
+        guard let placeMark = self.selectedPlaceMark else {
+            return
+        }
+        
+        if let location = placeMark.location {
+            self.render(location)
+        }
+        
+        self.addPin(in: placeMark)
+        self.getDirections()
+    }
+}
+
+extension MainMapViewController {
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self.map.delegate = self
+        
+        let locationSearchTable = LocationSearchTableViewController()
+        locationSearchTable.delegate = self
+        self.resultSearchController = UISearchController(searchResultsController: locationSearchTable)
+        self.resultSearchController?.searchResultsUpdater = locationSearchTable
+        locationSearchTable.mapView = self.map
+        
+        let searchBar = self.resultSearchController!.searchBar
+        searchBar.sizeToFit()
+        searchBar.placeholder = "Search for places"
+        self.navigationItem.titleView = self.resultSearchController?.searchBar
+        
+        self.resultSearchController?.hidesNavigationBarDuringPresentation = false
+        definesPresentationContext = true
+        
+        self.checkLocationServices()
+        
+        self.destinationLabel.text = ""
+    }
+    
+}
+
 extension MainMapViewController : MKMapViewDelegate {
+    
+    func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+        let renderer = MKPolylineRenderer(overlay: overlay as! MKPolyline)
+        renderer.strokeColor = .blue
+        return renderer
+    }
+    
     //    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
     //
     //        for touch in touches {

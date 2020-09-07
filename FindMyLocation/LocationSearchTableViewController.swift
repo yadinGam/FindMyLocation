@@ -19,7 +19,7 @@ class LocationSearchTableViewController : UITableViewController {
     var matchingItems:[MKMapItem] = []
     weak var delegate : LocationSearchTableDelegate?
     
-    func parseAddress(selectedItem: MKPlacemark) -> String {
+    private func parseAddress(selectedItem: MKPlacemark) -> String {
         // put a space between "4" and "Melrose Place"
         let firstSpace = (selectedItem.subThoroughfare != nil && selectedItem.thoroughfare != nil) ? " " : ""
         // put a comma between street and city/state
@@ -46,18 +46,18 @@ class LocationSearchTableViewController : UITableViewController {
 
 extension LocationSearchTableViewController {
     
-        override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-            return matchingItems.count
-        }
-        
-        override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    //        let cell = tableView.dequeueReusableCell(withIdentifier: "cell")!
-            let cell = UITableViewCell(style: UITableViewCell.CellStyle.subtitle, reuseIdentifier: nil)
-            let selectedItem = matchingItems[indexPath.row].placemark
-            cell.textLabel?.text = selectedItem.name
-            cell.detailTextLabel?.text = self.parseAddress(selectedItem: selectedItem)
-            return cell
-        }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return matchingItems.count
+    }
+    
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        //        let cell = tableView.dequeueReusableCell(withIdentifier: "cell")!
+        let cell = UITableViewCell(style: UITableViewCell.CellStyle.subtitle, reuseIdentifier: nil)
+        let selectedItem = matchingItems[indexPath.row].placemark
+        cell.textLabel?.text = selectedItem.name
+        cell.detailTextLabel?.text = self.parseAddress(selectedItem: selectedItem)
+        return cell
+    }
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         self.delegate?.selected(item: self.matchingItems[indexPath.row].placemark)
